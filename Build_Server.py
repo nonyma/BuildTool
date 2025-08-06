@@ -43,16 +43,39 @@ def build():
             "--approval", "always"
         ]
         print("[Codex CLI 실행]", " ".join(codex_cli_cmd))
-        cli_result = subprocess.run(
-            codex_cli_cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="ignore",
-            cwd=project_path,
-        )
-        stdout = cli_result.stdout or ""
-        stderr = cli_result.stderr or ""
+        try:
+            cli_result = subprocess.run(
+                codex_cli_cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+                cwd=project_path,
+                timeout=300,
+            )
+            stdout = cli_result.stdout or ""
+            stderr = cli_result.stderr or ""
+        except subprocess.TimeoutExpired as e:
+            stdout = e.output or ""
+            stderr = (e.stderr or "") + "\nCodex CLI timed out after 300 seconds"
+            if stdout:
+                print("CLI stdout:", stdout)
+            if stderr:
+                print("Codex CLI stderr:", stderr)
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open(codex_context_path, "a", encoding="utf-8", errors="ignore") as f:
+                f.write(f"\n---\n[{now}] Codex CLI 자동화 작업 요약\n")
+                f.write(stdout)
+                if stderr:
+                    f.write("\n[stderr]\n")
+                    f.write(stderr)
+            os.rename(codex_fix_path, codex_fix_fail_path)
+            return jsonify({
+                "status": "codex automation timeout",
+                "message": "Codex CLI timed out",
+                "fail_flag": codex_fix_fail_path,
+            }), 200
+
         if stdout:
             print("CLI stdout:", stdout)
         if stderr:
@@ -60,12 +83,19 @@ def build():
 
         # 작업 요약을 codex_context.log에 누적
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with open(codex_context_path, "a", encoding="utf-8") as f:
+        with open(codex_context_path, "a", encoding="utf-8", errors="ignore") as f:
             f.write(f"\n---\n[{now}] Codex CLI 자동화 작업 요약\n")
             f.write(stdout)
             if stderr:
                 f.write("\n[stderr]\n")
                 f.write(stderr)
+        if cli_result.returncode != 0:
+            os.rename(codex_fix_path, codex_fix_fail_path)
+            return jsonify({
+                "status": "codex automation failed",
+                "message": f"Codex CLI exited with code {cli_result.returncode}",
+                "fail_flag": codex_fix_fail_path,
+            }), 200
 
         # 코드 변경(커밋/푸시) 자동 처리
         git_status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, cwd=project_path)
