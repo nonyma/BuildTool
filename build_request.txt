@@ -1,5 +1,0 @@
-project_path:
-project_name:
-branch_name:
-should_build:false
-# commit:
