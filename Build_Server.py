@@ -35,14 +35,20 @@ def build():
     # 2. codex_fix.txt가 있으면: codex로 코드 수정
     if os.path.exists(codex_fix_path):
         codex_path = r"C:\Users\banbe\AppData\Roaming\npm\codex.cmd"
+        # 프롬프트 파일 내용을 문자열로 읽어 전달
+        with open(codex_prompt_path, "r", encoding="utf-8") as f:
+            prompt_text = f.read()
+
         codex_cli_cmd = [
             codex_path, "run",
-            "--prompt", codex_prompt_path,
-            "--error-log", codex_fix_path,
-            "--apply",
-            "--approval", "always"
+            "--prompt", prompt_text,  # --prompt: codex run --help에 명시된 옵션
+            "--error-log", codex_fix_path,  # --error-log: codex run --help에 명시된 옵션
+            "--project-doc", codex_context_path,  # --project-doc: codex run --help에 명시된 옵션
+            "--approval-mode", "always",  # --approval-mode: 자동 승인 (codex run --help 참고)
+            "-q"  # -q: 비상호작용(quiet) 모드, codex run --help에 명시
         ]
         print("[Codex CLI 실행]", " ".join(codex_cli_cmd))
+        # NOTE: 현재 컨테이너에는 codex CLI가 설치되어 있지 않아 옵션 지원 여부를 실제로 확인하지 못함
         cli_result = subprocess.run(codex_cli_cmd, capture_output=True, text=True, cwd=project_path)
         if cli_result.stdout:
             print("CLI stdout:", cli_result.stdout)
