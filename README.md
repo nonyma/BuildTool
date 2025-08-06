@@ -53,7 +53,7 @@ export OPENAI_API_KEY_BUILDSERVER=sk-xxxxxxxxxxxxxxxxxxxxxx
 빌드 서버에 전달하는 `build_request.txt` 파일은 다음과 같이 작성합니다.
 
 ```txt
-project_path: D:\Projects\MyUnrealProject
+project_path: C:\WorkSpace\UAIAgent
 project_name: MyUnrealProject
 branch_name: feature/login-api
 should_build: true
