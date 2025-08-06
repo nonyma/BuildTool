@@ -56,28 +56,23 @@ export OPENAI_API_KEY_BUILDSERVER=sk-xxxxxxxxxxxxxxxxxxxxxx
 project_path: D:\Projects\MyUnrealProject
 project_name: MyUnrealProject
 branch_name: feature/login-api
+should_build: true
 # (필요 시 추가 정보: commit, options 등)
 ```
 
-- 각 값은 POST /ue_build API 호출 시 json 파라미터와 동일하게 사용됨
-- (예시: GitHub Action 등에서 자동으로 생성해 전송)
+- `should_build`를 `true`(또는 `1`)로 설정하면 빌드가 실행되며, 빌드 후에는 자동으로 `false`로 되돌아갑니다.
+- 서버는 빌드 실행 시 현재 파일을 `<project_path>/build_request_archive/` 폴더에 타임스탬프 이름으로 복사해 보관합니다.
+- 각 값은 향후 다른 도구가 파일을 수정하여 빌드를 유발할 수 있도록 단순한 `key:value` 형식으로 유지합니다.
+- 분기명을 변경하거나 추후 `commit` 등의 추가 파라미터를 넣어 빌드 조건을 제어할 수 있습니다.
 
 ---
 
 ## API 요청 예시
 
-빌드 서버에 빌드를 요청할 때  
-아래와 같이 POST로 요청합니다.
+`build_request.txt` 내용을 수정한 뒤 빌드를 시작하려면 아래와 같이 POST 요청만 보내면 됩니다. 요청 본문은 비워도 됩니다.
 
 ```
 POST http://<빌드서버주소>:9000/ue_build
-Content-Type: application/json
-
-{
-  "project_path": "D:\Projects\MyUnrealProject",
-  "project_name": "MyUnrealProject",
-  "branch_name": "feature/login-api"
-}
 ```
 
 **응답 예시**
