@@ -43,20 +43,29 @@ def build():
             "--approval", "always"
         ]
         print("[Codex CLI 실행]", " ".join(codex_cli_cmd))
-        cli_result = subprocess.run(codex_cli_cmd, capture_output=True, text=True, cwd=project_path)
-        if cli_result.stdout:
-            print("CLI stdout:", cli_result.stdout)
-        if cli_result.stderr:
-            print("Codex CLI stderr:", cli_result.stderr)
+        cli_result = subprocess.run(
+            codex_cli_cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            cwd=project_path,
+        )
+        stdout = cli_result.stdout or ""
+        stderr = cli_result.stderr or ""
+        if stdout:
+            print("CLI stdout:", stdout)
+        if stderr:
+            print("Codex CLI stderr:", stderr)
 
         # 작업 요약을 codex_context.log에 누적
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with open(codex_context_path, "a", encoding="utf-8") as f:
             f.write(f"\n---\n[{now}] Codex CLI 자동화 작업 요약\n")
-            f.write(cli_result.stdout)
-            if cli_result.stderr:
+            f.write(stdout)
+            if stderr:
                 f.write("\n[stderr]\n")
-                f.write(cli_result.stderr)
+                f.write(stderr)
 
         # 코드 변경(커밋/푸시) 자동 처리
         git_status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, cwd=project_path)
