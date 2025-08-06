@@ -49,20 +49,23 @@ def build():
         ]
         print("[Codex CLI 실행]", " ".join(codex_cli_cmd))
         # NOTE: 현재 컨테이너에는 codex CLI가 설치되어 있지 않아 옵션 지원 여부를 실제로 확인하지 못함
-        cli_result = subprocess.run(codex_cli_cmd, capture_output=True, text=True, cwd=project_path)
-        if cli_result.stdout:
-            print("CLI stdout:", cli_result.stdout)
-        if cli_result.stderr:
-            print("Codex CLI stderr:", cli_result.stderr)
+        # Windows 환경에서 cp949 디코딩 오류가 발생할 수 있어, 바이너리로 캡처 후 UTF-8로 디코드
+        cli_result = subprocess.run(codex_cli_cmd, capture_output=True, cwd=project_path)
+        stdout = cli_result.stdout.decode("utf-8", errors="replace") if cli_result.stdout else ""
+        stderr = cli_result.stderr.decode("utf-8", errors="replace") if cli_result.stderr else ""
+        if stdout:
+            print("CLI stdout:", stdout)
+        if stderr:
+            print("Codex CLI stderr:", stderr)
 
         # 작업 요약을 codex_context.log에 누적
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with open(codex_context_path, "a", encoding="utf-8") as f:
             f.write(f"\n---\n[{now}] Codex CLI 자동화 작업 요약\n")
-            f.write(cli_result.stdout)
-            if cli_result.stderr:
+            f.write(stdout)
+            if stderr:
                 f.write("\n[stderr]\n")
-                f.write(cli_result.stderr)
+                f.write(stderr)
 
         # 코드 변경(커밋/푸시) 자동 처리
         git_status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, cwd=project_path)
