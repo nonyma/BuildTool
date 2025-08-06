@@ -1,65 +1,112 @@
 
 # Codex 빌드 자동화 워크플로우
 
-이 저장소는 Codex CLI와 빌드 서버, GitHub Actions를 연동하여  
-코드 자동화 및 빌드/수정 작업을 실험하는 프로젝트입니다.
+이 저장소는 Codex CLI, 빌드 서버, GitHub Actions를 연동하여  
+언리얼 프로젝트 자동 빌드 및 코드 수정을 실험하는 프로젝트입니다.
 
 ---
 
-## 구성 요소
+## 설치 및 필수 구성요소
 
-- **agent.md**  
-  자동화 워크플로우와 빌드 요청 규칙, Codex 사용 지침 등 정의
+### 1. Python 및 pip
+- [Python 공식 다운로드](https://www.python.org/downloads/)
+- pip는 Python 설치 시 기본 포함
 
-- **빌드 서버 스크립트**  
-  빌드 요청을 받고 Codex CLI를 호출하여 자동화 수행
-
-- **Codex CLI**  
-  자연어 프롬프트 기반 코드 생성 및 수정, 빌드 오류 자동 수정 루프 구현
-
-- **GitHub Actions**  
-  빌드 결과에 따라 PR 머지, 실패 알림 등 자동화 분기 처리
-
----
-
-## 기본 사용 흐름
-
-1. **빌드 요청/PR 생성**  
-   - 사용자가 PR을 생성하거나, 직접 빌드 요청을 작성
-
-2. **빌드 서버에서 Codex CLI 실행**  
-   - `build_request.txt` 또는 에러 로그 기반으로 Codex 자동화 실행
-
-3. **자동 수정/재시도 루프**  
-   - 빌드 실패 시 Codex가 수정안 제안 및 자동 반영
-
-4. **빌드 결과를 GitHub Actions로 전달**  
-   - 성공/실패 결과에 따라 자동 머지 또는 알림 분기
-
----
-
-## 시작하기
-
+### 2. 패키지 설치
 ```bash
-# Codex CLI 로그인(최초 1회)
-codex login
+pip install openai flask
+```
+- [openai-python 공식 문서](https://github.com/openai/openai-python)
+- [Flask 공식 문서](https://flask.palletsprojects.com/)
 
-# 빌드 자동화 요청 예시
-python build_server.py
+### 3. Codex CLI  
+- [OpenAI Codex CLI 공식 문서](https://github.com/openai/openai-codex-cli)
+- (CLI 도구 직접 활용 시만 필요. 단순 python+api 사용시 생략 가능)
+
+---
+
+## 필수 환경 변수
+
+- `OPENAI_API_KEY_BUILDSERVER`  
+  - Build_server.py가 OpenAI Codex API 호출 시 사용  
+  - [OpenAI 플랫폼에서 키 발급](https://platform.openai.com/api-keys)
+- (`FLASK_RUN_PORT`: Flask를 커스텀 포트로 실행할 때만 사용. 일반적으로 9000 포트로 고정)
+
+#### 환경 변수 등록 예시
+**Windows CMD**
+```
+set OPENAI_API_KEY_BUILDSERVER=sk-xxxxxxxxxxxxxxxxxxxxxx
+```
+**PowerShell**
+```
+$env:OPENAI_API_KEY_BUILDSERVER="sk-xxxxxxxxxxxxxxxxxxxxxx"
+```
+**bash(Linux/macOS)**
+```
+export OPENAI_API_KEY_BUILDSERVER=sk-xxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ---
 
-## 커스텀 규칙/자동화 설정
+## build_request.txt 양식
 
-자동화 규칙 및 상세 워크플로우는  
-`agent.md` 파일에서 관리합니다.
+빌드 서버에 전달하는 `build_request.txt` 파일은 다음과 같이 작성합니다.
+
+```txt
+project_path: D:\Projects\MyUnrealProject
+project_name: MyUnrealProject
+branch_name: feature/login-api
+# (필요 시 추가 정보: commit, options 등)
+```
+
+- 각 값은 POST /ue_build API 호출 시 json 파라미터와 동일하게 사용됨
+- (예시: GitHub Action 등에서 자동으로 생성해 전송)
+
+---
+
+## API 요청 예시
+
+빌드 서버에 빌드를 요청할 때  
+아래와 같이 POST로 요청합니다.
+
+```
+POST http://<빌드서버주소>:9000/ue_build
+Content-Type: application/json
+
+{
+  "project_path": "D:\Projects\MyUnrealProject",
+  "project_name": "MyUnrealProject",
+  "branch_name": "feature/login-api"
+}
+```
+
+**응답 예시**
+- 빌드 성공:  
+  ```json
+  { "status": "build succeeded" }
+  ```
+- 빌드 실패(Codex fix 제안 포함):  
+  ```json
+  { "status": "build failed", "fix_suggestion": "D:\Projects\MyUnrealProject\codex_fix.txt" }
+  ```
+
+---
+
+## 기본 워크플로우 요약
+
+1. **빌드 요청(POST 또는 build_request.txt)**  
+2. **서버에서 ue_build.bat 실행 & 로그 기록**  
+3. **빌드 실패 시 Codex를 통해 자동 코드 수정안 생성**  
+4. **성공/실패 결과를 응답 및 깃헙 연동 처리**
 
 ---
 
 ## 참고
 
-- Codex CLI 공식 문서: https://github.com/openai/openai-codex-cli
-- GitHub Actions: https://docs.github.com/actions
+- [OpenAI API Key 관리](https://platform.openai.com/api-keys)
+- [openai-python 공식 문서](https://github.com/openai/openai-python)
+- [Flask 공식](https://flask.palletsprojects.com/)
+- [Codex CLI](https://github.com/openai/openai-codex-cli)
+- [GitHub Actions](https://docs.github.com/actions)
 
 ---
