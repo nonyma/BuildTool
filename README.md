@@ -50,17 +50,20 @@ export OPENAI_API_KEY_BUILDSERVER=sk-xxxxxxxxxxxxxxxxxxxxxx
 
 ## build_request.txt 양식
 
-빌드 서버에 전달하는 `build_request.txt` 파일은 다음과 같이 작성합니다.
+빌드 서버에 전달하는 `build_request.txt` 파일은 JSON 형식으로 작성합니다.
 
-```txt
-project_path: C:\WorkSpace\UAIAgent
-project_name: MyUnrealProject
-branch_name: feature/login-api
-# (필요 시 추가 정보: commit, options 등)
+```json
+{
+  "project_path": "C:\\WorkSpace\\UAIAgent",
+  "project_name": "UAIAgent",
+  "branch_name": "main",
+  "repository": "UAIAgent",
+  "should_build": "true"
+}
 ```
 
-- 각 값은 POST /ue_build API 호출 시 json 파라미터와 동일하게 사용됨
-- (예시: GitHub Action 등에서 자동으로 생성해 전송)
+- `should_build` 값이 "true"일 때만 빌드가 수행되며, 처리 후에는 "false"로 자동 초기화됩니다.
+- 파일은 프로젝트 루트에 두고, 서버는 처리된 요청을 `build_request_archive` 디렉터리에 복사해 보관합니다.
 
 ---
 
