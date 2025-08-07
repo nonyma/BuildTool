@@ -27,7 +27,6 @@ set "TARGET_CONFIG=Development"
 set "UE_PATH=C:\Program Files\Epic Games\UE_5.6\Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.exe"
 set "UPROJECT_PATH=%PROJECT_PATH%\%PROJECT_NAME%.uproject"
 set "LOG_PATH=%PROJECT_PATH%\build.log"
-set "FIX_PATH=%PROJECT_PATH%\codex_fix.txt"
 
 echo [빌드 시작] %DATE% %TIME%
 echo 프로젝트 경로: %PROJECT_PATH%
@@ -40,25 +39,8 @@ REM === 빌드 실행 (컴파일 확인만) ===
 
 REM === 빌드 결과 체크 ===
 IF %ERRORLEVEL% NEQ 0 (
-    echo [빌드 실패] Codex 컨텍스트 준비
-    if exist "%FIX_PATH%" del /f "%FIX_PATH%"
-    findstr /i /c:"error" "%LOG_PATH%" > "%FIX_PATH%"
-    echo. >> "%FIX_PATH%"
-    echo --- Full context from build log --- >> "%FIX_PATH%"
-    type "%LOG_PATH%" >> "%FIX_PATH%"
-    cd /d "%PROJECT_PATH%"
-    git add codex_fix.txt
-    git commit -m "Add Codex context after build failure"
-    git push origin "%BRANCH_NAME%"
+    echo [빌드 실패] Build failed, see build.log for details
     exit /b 1
-)
-
-REM === 빌드 성공 시 codex_fix.txt 제거 ===
-if exist "%FIX_PATH%" (
-    cd /d "%PROJECT_PATH%"
-    git rm -f --ignore-unmatch codex_fix.txt
-    git commit -m "Remove Codex context after successful build"
-    git push origin "%BRANCH_NAME%"
 )
 
 echo [빌드 성공] %DATE% %TIME%

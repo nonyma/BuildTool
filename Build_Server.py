@@ -7,15 +7,15 @@ import shutil
 
 app = Flask(__name__)
 
-def archive_file(filepath, archive_dir="codex_archive"):
+def archive_file(filepath, archive_dir="build_request_archive"):
     if not os.path.exists(archive_dir):
         os.makedirs(archive_dir)
     basename = os.path.basename(filepath)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    shutil.move(filepath, os.path.join(archive_dir, f"{ts}_{basename}"))
+    archive_path = os.path.join(archive_dir, f"{ts}_{basename}")
+    shutil.copyfile(filepath, archive_path)  # <== 복사만
 
 def to_wsl_path(win_path):
-    r"""윈도우 경로 -> WSL2 경로 변환 (예: C:\WorkSpace\UAIAgent -> /mnt/c/WorkSpace/UAIAgent)"""
     drive, path = os.path.splitdrive(win_path)
     drive_letter = drive.rstrip(":").lower()
     wsl_path = f"/mnt/{drive_letter}{path.replace(os.sep, '/')}"
@@ -34,6 +34,13 @@ def write_build_request(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
+def is_true(val):
+    if val is True or val == 1:
+        return True
+    if isinstance(val, str) and val.lower() in ("true", "1"):
+        return True
+    return False
+
 @app.route("/ue_build", methods=["POST"])
 def build():
     data = request.json
@@ -49,7 +56,7 @@ def build():
     state = read_build_request(build_request_path)
     should_build = str(state.get("should_build", "")).lower()
     # should_build 값이 true 또는 1이 아니면 바로 종료
-    if should_build not in ("true", "1"):
+    if not is_true(should_build):
         return jsonify({"status": "idle", "reason": "should_build is not true/1"}), 200
 
     # compile_error가 없으면 빌드부터 시도
@@ -68,7 +75,6 @@ def build():
             state["should_build"] = False
             write_build_request(build_request_path, state)
             archive_file(build_request_path)
-            # 커밋 & 푸시
             subprocess.run(["git", "add", "."], cwd=project_path)
             subprocess.run(["git", "commit", "-m", "[auto] build succeeded"], cwd=project_path)
             subprocess.run(["git", "push"], cwd=project_path)
@@ -81,11 +87,10 @@ def build():
             state["should_build"] = False
             write_build_request(build_request_path, state)
             archive_file(build_request_path)
-            # 커밋 & 푸시
             subprocess.run(["git", "add", "."], cwd=project_path)
             subprocess.run(["git", "commit", "-m", "[auto] build failed"], cwd=project_path)
             subprocess.run(["git", "push"], cwd=project_path)
-            return jsonify({"status": "build failed", "compile_error": True}), 200
+            return jsonify({"status": "build failed", "compile_error": True}), 300
 
     # compile_error가 있으면 codex 단계
     else:
@@ -118,7 +123,6 @@ def build():
             state["should_build"] = False
             write_build_request(build_request_path, state)
             archive_file(build_request_path)
-            # 커밋 & 푸시
             subprocess.run(["git", "add", "."], cwd=project_path)
             subprocess.run(["git", "commit", "-m", "[auto] codex fix"], cwd=project_path)
             subprocess.run(["git", "push"], cwd=project_path)
@@ -129,12 +133,11 @@ def build():
                 "toolagent_stderr": stderr
             }), 200
         else:
-            # Codex 실패: codex_error 필드로 저장
+            # Codex 실패: codex_error 필드만 갱신, compile_error는 남김!
             state["codex_error"] = stderr or "Codex CLI 실행 실패"
             state["should_build"] = False
             write_build_request(build_request_path, state)
             archive_file(build_request_path)
-            # 커밋 & 푸시
             subprocess.run(["git", "add", "."], cwd=project_path)
             subprocess.run(["git", "commit", "-m", "[auto] codex failed"], cwd=project_path)
             subprocess.run(["git", "push"], cwd=project_path)
@@ -143,7 +146,7 @@ def build():
                 "message": "Codex CLI 실행 실패. codex_error 필드 생성됨.",
                 "toolagent_stdout": stdout,
                 "toolagent_stderr": stderr
-            }), 200
+            }), 300
 
 if __name__ == "__main__":
     try:
